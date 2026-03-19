@@ -1,0 +1,12 @@
+{
+  "name": "improve-claude-md",
+  "description": "Rewrite a CLAUDE.md file using <important if> blocks to improve instruction adherence",
+  "version": "1.0.0",
+  "author": {
+    "name": "nampham1106",
+    "email": "nampham11062002@gmail.com"
+  },
+  "repository": "https://github.com/nampq11/agent-scripts",
+  "license": "MIT",
+  "keywords": ["claude-md", "instructions", "important-if", "claude-code"]
+}

@@ -1,6 +1,6 @@
 ---
 name: harness-engineering
-description: "Use when the user wants to set up new projects or add enforcement tooling,etc to an existing project. Also use when the user says "set up my project", or "add quality enforcement". 
+description: Use when the user wants to set up new projects or add enforcement tooling,etc to an existing project. Also use when the user says "set up my project", or "add quality enforcement". 
 ---
 
 ## Resource Resolution Preamble

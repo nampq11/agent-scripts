@@ -15,7 +15,7 @@ const { resolve } = require('node:path');
 
 const CONFIG = {
   maxLines: 300,
-  include: ['src/**/*.js'],
+  include: ['src/**/*.js', 'src/**/*.ts'],
   exclude: [],
 };
 

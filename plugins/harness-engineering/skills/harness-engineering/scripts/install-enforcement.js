@@ -5,16 +5,13 @@
  *   node install-enforcement.js --target=<project-root> [--skip-install]
  *
  * Actions:
- *   1. Creates scripts/ and .husky/ in target if needed
- *   2. Copies 5 enforcement scripts (skip if already exists)
- *   3. Runs npx husky init (unless --skip-install)
- *   4. Copies hooks → .husky/ (chmod 755)
- *   5. Copies configs with eslint rename
- *   6. Handles .gitignore (create or append)
- *   7. Copies .env.example (skip if exists)
- *   8. Merges npm scripts into package.json
- *   9. Adds lint-staged config to package.json
- *  10. Installs dev deps (unless --skip-install)
+ *   1. Creates scripts/ and scripts/lib/ in target if needed
+ *   2. Copies enforcement scripts (skip if already exists)
+ *   3. Copies .husky/ hooks
+ *   4. Creates .git/hooks/pre-commit and .git/hooks/pre-push
+ *   5. Merges npm scripts into package.json
+ *   6. Adds lint-staged config to package.json
+ *   7. Installs dev deps (unless --skip-install)
  */
 
 'use strict';
@@ -60,7 +57,6 @@ function run(cmd, args, cwd) {
 
 const LIB_DIR = path.join(__dirname, 'lib');
 const HOOKS_DIR = path.join(__dirname, 'hooks');
-const TEMPLATES_DIR = path.join(__dirname, '..', 'templates');
 
 const ENFORCEMENT_SCRIPTS = [
   'check-secrets.js',
@@ -70,61 +66,44 @@ const ENFORCEMENT_SCRIPTS = [
   'generate-docs-helpers.js',
 ];
 
-const HOOKS = ['pre-commit', 'pre-push'];
-
 const NPM_SCRIPTS = {
-  test: 'jest',
-  'test:all': 'jest --testPathPattern="\\.(test|integration\\.test)\\.[jt]s$"',
+  test: 'vitest run',
+  'test:all': 'vitest run',
   posttest: 'git rev-parse HEAD > .test-passed',
   'validate-docs': 'node scripts/validate-docs.js --full',
   'generate-docs': 'node scripts/generate-docs.js',
-  lint: 'eslint src/',
 };
 
-const LINT_STAGED_CONFIG = { 'src/**/*.js': ['eslint --fix'] };
+const LINT_STAGED_CONFIG = {
+  'src/**/*.ts': ['oxlint --type-aware --tsconfig tsconfig.build.json --fix', 'oxfmt --write'],
+  'tests/**/*.ts': ['oxlint --type-aware --tsconfig tsconfig.build.json --fix', 'oxfmt --write'],
+};
 
 function copyEnforcementScripts(targetDir) {
   const scriptsDir = path.join(targetDir, 'scripts');
-  fs.mkdirSync(scriptsDir, { recursive: true });
+  const libDir = path.join(scriptsDir, 'lib');
+
+  fs.mkdirSync(libDir, { recursive: true });
   for (const file of ENFORCEMENT_SCRIPTS) {
-    copyIfAbsent(path.join(LIB_DIR, file), path.join(scriptsDir, file));
+    copyIfAbsent(path.join(LIB_DIR, file), path.join(libDir, file));
   }
 }
 
 function copyHooks(targetDir) {
-  const huskyDir = path.join(targetDir, '.husky');
-  fs.mkdirSync(huskyDir, { recursive: true });
-  for (const hook of HOOKS) {
-    const dest = path.join(huskyDir, hook);
-    fs.copyFileSync(path.join(HOOKS_DIR, hook), dest);
-    fs.chmodSync(dest, 0o755);
-  }
-}
+  const gitHooksDir = path.join(targetDir, '.git', 'hooks');
+  fs.mkdirSync(gitHooksDir, { recursive: true });
 
-function copyConfigs(targetDir) {
-  fs.copyFileSync(
-    path.join(TEMPLATES_DIR, 'eslint-base.js'),
-    path.join(targetDir, '.eslintrc.js')
-  );
-  copyIfAbsent(path.join(TEMPLATES_DIR, '.prettierrc'), path.join(targetDir, '.prettierrc'));
-  copyIfAbsent(
-    path.join(TEMPLATES_DIR, 'lint-staged.config.js'),
-    path.join(targetDir, 'lint-staged.config.js')
-  );
-}
+  // Copy pre-commit hook
+  const preCommitSrc = path.join(HOOKS_DIR, 'pre-commit');
+  const preCommitDest = path.join(gitHooksDir, 'pre-commit');
+  fs.copyFileSync(preCommitSrc, preCommitDest);
+  fs.chmodSync(preCommitDest, 0o755);
 
-function handleGitignore(targetDir) {
-  const src = path.join(TEMPLATES_DIR, 'gitignore-template');
-  const dest = path.join(targetDir, '.gitignore');
-  const ourPatterns = fs.readFileSync(src, 'utf8');
-
-  if (!fs.existsSync(dest)) {
-    fs.writeFileSync(dest, ourPatterns);
-  } else {
-    const existing = fs.readFileSync(dest, 'utf8');
-    const separator = existing.endsWith('\n') ? '\n' : '\n\n';
-    fs.writeFileSync(dest, existing + separator + '# harness-engineering enforcement\n' + ourPatterns);
-  }
+  // Copy pre-push hook
+  const prePushSrc = path.join(HOOKS_DIR, 'pre-push');
+  const prePushDest = path.join(gitHooksDir, 'pre-push');
+  fs.copyFileSync(prePushSrc, prePushDest);
+  fs.chmodSync(prePushDest, 0o755);
 }
 
 function mergePackageJson(targetDir) {
@@ -154,22 +133,18 @@ function main() {
   const targetDir = path.resolve(flags.target);
 
   copyEnforcementScripts(targetDir);
-
-  if (!flags.skipInstall) {
-    run('npx', ['husky', 'init'], targetDir);
-  }
-
   copyHooks(targetDir);
-  copyConfigs(targetDir);
-  handleGitignore(targetDir);
-  copyIfAbsent(path.join(TEMPLATES_DIR, '.env.example'), path.join(targetDir, '.env.example'));
   mergePackageJson(targetDir);
 
   if (!flags.skipInstall) {
-    run('npm', ['install', '--save-dev', 'husky', 'lint-staged', 'jest', 'eslint'], targetDir);
+    run('pnpm', ['install', '--save-dev', 'lint-staged'], targetDir);
   }
 
   console.log('Enforcement tooling installed into ' + targetDir);
+  console.log('');
+  console.log('Git hooks installed:');
+  console.log('  .git/hooks/pre-commit  - Runs lint, format check, secret scan, file size check, doc generation');
+  console.log('  .git/hooks/pre-push    - Runs tests with SHA-based caching');
 }
 
 main();

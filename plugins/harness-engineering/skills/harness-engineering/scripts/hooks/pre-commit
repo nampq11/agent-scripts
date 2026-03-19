@@ -1,15 +1,37 @@
 #!/usr/bin/env bash
 
 # Pre-commit hook: fast checks (<2s)
-# 1. lint-staged (linter on staged files)
+# 1. Lint and format staged files
 # 2. Secret detection
 # 3. File size enforcement
 # 4. Auto-regenerate doc sections
 # 5. CLAUDE.md drift warning
 
-npx lint-staged
+set -e
 
-node scripts/check-secrets.js
-node scripts/check-file-sizes.js
-node scripts/generate-docs.js
-node scripts/validate-docs.js
+# Get list of staged TypeScript files
+STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|js)$' || true)
+
+if [ -n "$STAGED_TS" ]; then
+  echo "Running oxlint on staged files..."
+  for file in $STAGED_TS; do
+    if [ -f "$file" ]; then
+      npx oxlint --type-aware --tsconfig tsconfig.build.json --config .oxlintrc.json "$file" || true
+    fi
+  done
+
+  echo "Checking formatting with oxfmt..."
+  npx oxfmt --check $STAGED_TS
+fi
+
+echo "Checking for secrets..."
+node scripts/lib/check-secrets.js
+
+echo "Checking file sizes..."
+node scripts/lib/check-file-sizes.js
+
+echo "Generating docs..."
+node scripts/lib/generate-docs.js
+
+echo "Validating docs..."
+node scripts/lib/validate-docs.js

@@ -16,7 +16,7 @@ const SKIP_DIRS = new Set(['node_modules', '.git', 'coverage', 'dist', 'build', 
 
 /**
  * Extract the first description line from a file's JSDoc comment.
- * @param {string} filePath - Absolute path to a .js file
+ * @param {string} filePath - Absolute path to a .js or .ts file
  * @returns {string} Description text, or empty string
  */
 function extractJSDocDescription(filePath) {
@@ -24,6 +24,12 @@ function extractJSDocDescription(filePath) {
   try {
     content = fs.readFileSync(filePath, 'utf-8');
   } catch {
+    return '';
+  }
+
+  // Skip if file has no JSDoc/TSDoc comment in first 500 chars
+  const preview = content.slice(0, 500);
+  if (!preview.includes('/**')) {
     return '';
   }
 
@@ -48,9 +54,9 @@ function extractJSDocDescription(filePath) {
 }
 
 /**
- * Extract exported names from a CommonJS module (capped at 5).
- * Reads `module.exports = { ... }` and `exports.name =` patterns.
- * @param {string} filePath - Absolute path to a .js file
+ * Extract exported names from a module (capped at 5).
+ * Reads CommonJS (`module.exports`, `exports.name`) and ES modules (`export function`, `export const`).
+ * @param {string} filePath - Absolute path to a .js or .ts file
  * @returns {string[]} Array of export names (max 5)
  */
 function extractExports(filePath) {
@@ -79,6 +85,43 @@ function extractExports(filePath) {
   let m;
   while ((m = namedRe.exec(content)) !== null) {
     names.add(m[1]);
+  }
+
+  // ES modules: export function/const/class/interface/type
+  const esExportRe = /export\s+(?:async\s+)?function\s+([a-zA-Z_$][\w$]*)/g;
+  while ((m = esExportRe.exec(content)) !== null) {
+    names.add(m[1]);
+  }
+
+  const esConstRe = /export\s+(?:const|let|var)\s+([a-zA-Z_$][\w$]*)/g;
+  while ((m = esConstRe.exec(content)) !== null) {
+    names.add(m[1]);
+  }
+
+  const esClassRe = /export\s+class\s+([a-zA-Z_$][\w$]*)/g;
+  while ((m = esClassRe.exec(content)) !== null) {
+    names.add(m[1]);
+  }
+
+  const esTypeRe = /export\s+(?:type|interface)\s+([a-zA-Z_$][\w$]*)/g;
+  while ((m = esTypeRe.exec(content)) !== null) {
+    names.add(m[1]);
+  }
+
+  // export { name1, name2 }
+  const esNamedExportRe = /export\s*\{([^}]+)\}/g;
+  while ((m = esNamedExportRe.exec(content)) !== null) {
+    const exports = m[1].split(',').map(e => e.trim().split(' as ')[0].trim());
+    for (const exp of exports) {
+      if (exp && /^[a-zA-Z_$][\w$]*$/.test(exp)) {
+        names.add(exp);
+      }
+    }
+  }
+
+  // default export
+  if (/export\s+default\s+(?:class|function|const|let|var)/.test(content)) {
+    names.add('default');
   }
 
   return [...names].slice(0, 5);
@@ -146,7 +189,7 @@ function buildTreeRecursive(dirPath, prefix, lines) {
       buildTreeRecursive(path.join(dirPath, entry.name), prefix + childPrefix, lines);
     } else {
       let annotation = '';
-      if (entry.name.endsWith('.js')) {
+      if (entry.name.endsWith('.js') || entry.name.endsWith('.ts')) {
         const desc = extractJSDocDescription(path.join(dirPath, entry.name));
         if (desc) {
           annotation = `  # ${desc}`;
@@ -193,7 +236,7 @@ function collectModules(dirPath, rows, relPrefix = '') {
 
   const sortedDirs = entries.filter(e => e.isDirectory() && !SKIP_DIRS.has(e.name) && !e.name.startsWith('.'))
     .sort((a, b) => a.name.localeCompare(b.name));
-  const sortedFiles = entries.filter(e => e.isFile() && e.name.endsWith('.js'))
+  const sortedFiles = entries.filter(e => e.isFile() && (e.name.endsWith('.js') || e.name.endsWith('.ts')))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   for (const file of sortedFiles) {

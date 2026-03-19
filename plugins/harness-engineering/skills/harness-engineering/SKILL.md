@@ -1,6 +1,6 @@
 ---
 name: harness-engineering
-description: Use when the user wants to set up new projects or add enforcement tooling,etc to an existing project. Also use when the user says "set up my project", or "add quality enforcement". 
+description: Use when the user wants to set up new Node/TypeScript projects or add enforcement tooling to an existing project. Also use when the user says "set up my project", "add quality enforcement", or "initialize typescript project".
 ---
 
 ## Resource Resolution Preamble
@@ -13,13 +13,14 @@ SCRIPTS_DIR=$SKILL_DIR/scripts
 TEMPLATES_DIR=$SKILL_DIR/templates
 REFERENCES_DIR=$SKILL_DIR/references
 ```
-if `SKILL_DIR` is empty, halt and tell the user: "Could not locate the setup plugin directory under ~/.claude/plugins. Verify the plugin is installed."
+
+If `SKILL_DIR` is empty, halt and tell the user: "Could not locate the setup plugin directory under ~/.claude/plugins. Verify the plugin is installed."
 
 ---
 
-## Phase 1: Detect Enviroment
+## Phase 1: Detect Environment
 
-Check the working directory for these minifest files: `package.json`, `pyproject.toml`, `Makefile`.
+Check the working directory for these manifest files: `package.json`, `pyproject.toml`, `Makefile`.
 
 Also check for: `.git/`, `src/`, existing `CLAUDE.md`.
 
@@ -36,50 +37,55 @@ For existing projects, record the detected stack so Phase 2 question can be skip
 Use the AskUserQuestion tool for each question, one at a time. Adapt or skip questions based on what was detected in Phase 1.
 
 **Q1 — Purpose** (always ask):
-"What are you building?" — understand whether this is a web app, REST API, CLI tool, data pipeline, ML project, firmware, mobile app, etc.
+"What are you building?" — understand whether this is a web app, REST API, CLI tool, data pipeline, library, etc.
 
-**Q2 — language/stack** (skip if inferred from manifest):
+**Q2 — Language/stack** (skip if inferred from manifest):
 "What language/stack would you like to use?"
 
 Recommend based on the answer to Q1:
-- UI/web app → Node/Typescript (default recommendation)
-- Backend API → Node/Typescript or Python
-- Data science/ML → Python
-- Fireware/embedded → C/C++
-- System programming or CLI → Bun/Typescript
+- UI/web app → Node/TypeScript (default recommendation)
+- Backend API → Node/TypeScript or Python
+- CLI tool → Node/TypeScript or Bun
+- Library → Node/TypeScript
 
 **Q3 — Framework** (skip if inferred; options depend on stack chosen):
-- Node/TS: Express, NestJS, Next.js or none
-- Python: FastAPI or none
-- C/C++: ask about build system (CMake) instead of framework
-- Bun/TS: commander or none
+- Node/TS: Express, Fastify, Next.js, Vite, or none
+- Bun/TS: Commander or none
 
 **Q4 — Project name** (new projects only):
 "What should the project be called?" — suggest the current directory name as the default.
 
-Do not ask about things you can infer. If the student says "firmware in C", ask about the build system, not web frameworks.
+Do not ask about things you can infer.
 
 ---
 
 ## Phase 3: Scaffold (New projects only)
 
-Skip this phase entrirely for existing projects.
+Skip this phase entirely for existing projects.
 
-**Node/Typescript path (fast path - script does the work):**
+**Node/TypeScript path (fast path - script does the work):**
 
 ```bash
 node $SCRIPTS_DIR/init-project.js --name=<name> --framework=<framework>
 ```
 
+The script creates:
+- `package.json` with TypeScript, oxlint, oxfmt, Vitest deps
+- `tsconfig.base.json` and `tsconfig.build.json`
+- `vitest.config.ts` with coverage thresholds (75%)
+- `.oxlintrc.json` and `.oxfmtrc.jsonc` for linting/formatting
+- `.gitignore`, `pnpm-workspace.yaml`
+- `src/`, `tests/`, `scripts/`, `docs/` directories
+- Minimal `src/index.ts` entry point
+- `tests/setup.ts` test setup file
+
 **All other stacks (adaptive path - Claude does the work):**
 
 1. `git init`
 2. Create standard directories: `src/`, `tests/`, `scripts/`, `docs/`
-3. Generate the appropriate manifest file:
-  - Python: `pyproject.toml` with `[build-system]` and `[tool.pytest.ini_options]`
-  - C/C++: ``CMakeLists.txt` with project name, C++ standard, and a test target
-4. Install denpendencies using the stack's package manager (pip, cmake, go mod tidy, cargo build)
-5. Create a minimal `src/main.<ext>` entry point and a `tests/` placeholder
+3. Generate the appropriate manifest file with tooling recommendations
+4. Install dependencies using the stack's package manager
+5. Create a minimal entry point and test placeholder
 
 ---
 
@@ -87,30 +93,42 @@ node $SCRIPTS_DIR/init-project.js --name=<name> --framework=<framework>
 
 READ `$REFERENCES_DIR/enforcement-scripts.md` first to understand the enforcement principles and the secret-scanning regex patterns before writing any scripts.
 
-**Node/Typescript path (fast path):**
+**Node/TypeScript path (fast path):**
 
 ```bash
 node $SCRIPTS_DIR/install-enforcement.js --target=<project-root>
 ```
+
+This installs:
+- Git hooks: `.git/hooks/pre-commit` and `.git/hooks/pre-push`
+- Enforcement scripts in `scripts/lib/`:
+  - `check-secrets.js` - Scan for API keys, tokens
+  - `check-file-sizes.js` - Enforce 300-line file limit
+  - `validate-docs.js` - CLAUDE.md drift detection
+  - `generate-docs.js` - Auto-generate doc sections
+  - `generate-docs-helpers.js` - Helper functions
+
+**Pre-commit hook** runs:
+1. oxlint on staged TypeScript/JavaScript files
+2. oxfmt format check
+3. Secret scanning
+4. File size check (300-line limit)
+5. Doc regeneration
+6. Drift warning
+
+**Pre-push hook** runs:
+1. Full test suite (Vitest) with SHA-based caching
+2. Dependency audit (warn-only)
 
 **All other stacks (adaptive path - Claude creates equivalent enforcement):**
 
 Use the equivalents table to choose the right tools:
 | Enforcement     | Node/TS             | Python               |
 |-----------------|---------------------|----------------------|
-| Linter          |                     |                      |   
-| Formatter       |                     |                      |
+| Linter          | oxlint              | ruff                 |
+| Formatter       | oxfmt               | ruff format          |
 | Test runner     | Vitest              | pytest               |
-| Pre-commit mgr  | husky + lint-staged | pre-commit framework |
-
-Steps for the adaptive path:
-1. Write a secret-scanning script using the same regex patterns from `enforcement-scripts.md`, adapted to the stack's scripting language (Python script, shell script, etc.)
-2. Write a file size checking script enforcing the 300-line limit
-3. Create `scripts/lib/` directory and place both scripts there
-4. Create `.git/hooks/pre-commit` - runs linter, formatter check, secret scanner, file size checker
-5. Create `.git/hooks/pre-push` - runs the test suite with SHA-based caching to skip unchanged code
-6. Make both hook files executable: `chmod +x .git/hooks/pre-commit .git/hooks/pre-push`
-7. Install and configure the linter and formatter for the chosen stack
+| Pre-commit mgr  | git hooks           | pre-commit framework |
 
 ---
 
@@ -120,7 +138,7 @@ Read `$REFERENCES_DIR/claude-md-guide.md` first for quality guidelines - the goa
 
 Read `$TEMPLATES_DIR/project-claude.md` as the base pattern to follow.
 
-**Node/Typescript (if generate-claude-md.js exists):**
+**Node/TypeScript:**
 
 ```bash
 node $SCRIPTS_DIR/generate-claude-md.js --target=<project-root> --framework=<framework>
@@ -128,16 +146,15 @@ node $SCRIPTS_DIR/generate-claude-md.js --target=<project-root> --framework=<fra
 
 **All stacks (or if the script doesn't exist yet) - Claude generates CLAUDE.md directly:**
 
-Adap the template to include:
-- **Commands section**: stack-appropriate build, test, lint, and format commands
+Adapt the template to include:
+- **Commands section**: stack-appropriate build, test, lint, typecheck commands
 - **Architecture section**: describe `src/`, `tests/`, `scripts/` layout and what goes where
 - **Enforcement scripts section**: document the installed scripts and what triggers them
-- **Quality gates**: 300-line file limit, 50-line function limit, complexity red flags (verbatim from global CLAUDE.md pattern)
-- **Critical Gotchas section**: include the capture instruction - "When you hit a non-obvious issue, add it here immediately"
-- **Code Review Checklist**: same checklist from the template
-- **Writing Good CLAUDE.md Content section**: embed the key guidance so future agents know what to add here
+- **Quality gates**: 300-line file limit, 50-line function limit, complexity red flags
+- **Critical Gotchas section**: include the capture instruction
+- **TypeScript specifics**: typecheck command, strict mode enabled
 
-if no global CLAUDE.md exists in the project's parent directory, read `$TEMPLATES_DIR/global-claude.md` and generate an adapted version for the detected stack.
+If no global CLAUDE.md exists in the project's parent directory, read `$TEMPLATES_DIR/global-claude.md` and generate an adapted version.
 
 ---
 
@@ -146,13 +163,16 @@ if no global CLAUDE.md exists in the project's parent directory, read `$TEMPLATE
 After all phases complete, output a summary that includes:
 
 1. **What was installed** - list every file created or modified
-2. **Key commands** for the stack:
-  - How to run tests
-  - How to run the linter
-  - How to make a commit (hooks fire automatically)
-3. **TDD reminder**: "Write tests first. Red (failing test) -> Green (passing) -> Refactor. Never write implementation before a test exists."
+2. **Key commands** for Node/TypeScript projects:
+   - `pnpm test` - Run tests
+   - `pnpm lint` - Run oxlint
+   - `pnpm lint:fix` - Fix linting issues
+   - `pnpm format` - Format with oxfmt
+   - `pnpm typecheck` - TypeScript type checking
+   - `pnpm check` - Run all checks (format + lint + test)
+3. **TDD reminder**: "Write tests first. Red (failing test) → Green (passing) → Refactor. Never write implementation before a test exists."
 4. **Suggested next steps**:
-  - Fill in the `[bracketed placeholders]` in CLAUDE.md
-  - Review and expand the Architecture section
-  - Add the first real feature with a test
-  - Make the first commit to initialize git history
+   - Fill in the `[bracketed placeholders]` in CLAUDE.md
+   - Review and expand the Architecture section
+   - Add the first real feature with a test
+   - Make the first commit to initialize git history

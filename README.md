@@ -21,18 +21,21 @@ claude plugin install improve-claude-md
 
 ### harness-engineering
 
-Bootstrap and enforce runtime system for AI agents. Helps you set up new projects or add enforcement tooling to existing projects. Provides scaffolding, linting, formatting, testing infrastructure, and quality gates.
+Bootstrap and enforce engineering practices for Node/TypeScript projects. Provides scaffolding with modern tooling, pre-commit hooks, and quality gates.
 
 **Skills:**
 
-- `/harness-engineering` - Set up new projects or add quality enforcement to existing projects
+- `/harness-engineering` - Set up new TypeScript projects or add quality enforcement to existing projects
 
 **Features:**
-- Project Scaffolding: Quick setup for Node/TypeScript, Python, C/C++, and Bun projects
-- Quality Enforcement: Pre-commit hooks for linting, formatting, and secret scanning
-- Pre-push Hooks: Test runner with SHA-based caching to skip unchanged code
-- CLAUDE.md Generation: Auto-generates project documentation for AI agents
-- Quality Gates: 300-line file limit, 50-line function limit, complexity checks
+- **Modern TypeScript Toolchain**: Uses oxlint (fast linter), oxfmt (fast formatter), Vitest (test runner)
+- **Project Scaffolding**: Quick setup for Node/TypeScript with Express, Fastify, Next.js, Vite, or none
+- **TypeScript Configs**: Strict mode enabled, separate base/build configs, proper path resolution
+- **Quality Enforcement**: Pre-commit hooks for linting, formatting, and secret scanning
+- **Pre-push Hooks**: Vitest runner with SHA-based caching to skip unchanged code
+- **CLAUDE.md Generation**: Auto-generates project documentation for AI agents
+- **Quality Gates**: 300-line file limit, 50-line function limit, complexity checks
+- **Coverage Thresholds**: 75% for branches, functions, lines, statements
 
 ### improve-claude-md
 

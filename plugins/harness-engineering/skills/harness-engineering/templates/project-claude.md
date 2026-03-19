@@ -2,7 +2,7 @@
 
 # CLAUDE.md
 
-[Project Name] — a [brief one-line description of what this is, built with, and its purpose].
+[Project Name] — a [brief one-line description of what this is, built with TypeScript, and its purpose].
 
 ## Project map
 
@@ -15,29 +15,36 @@
 
 ### Development
 ```bash
-npm start                    # Run the application
-npm run dev                  # Development mode with hot reload
-npm run build                # Production build
-npm run lint                 # Run linter
+pnpm dev                     # Run with tsx (hot reload for dev)
+pnpm build                   # Production build (tsc)
+pnpm typecheck               # TypeScript type checking
+pnpm lint                    # Run oxlint
+pnpm lint:fix                # Fix linting issues
+pnpm format                  # Format code with oxfmt
 ```
 
 ### Testing
 ```bash
-npm test                           # Unit tests
-npm run test:integration           # Integration tests
-npm run test:all                   # All tests (used by pre-push hook)
-npm test tests/some-file.test.js   # Single file (preferred during dev)
-npm test -- --coverage             # Coverage report
+pnpm test                           # Unit tests
+pnpm test:coverage                  # Coverage report
+pnpm test:coverage:build            # Coverage after build
+pnpm test tests/some-file.test.ts   # Single file (preferred during dev)
+```
+
+### Quality Gates
+```bash
+pnpm check                    # Run all checks (format + lint + test)
+pnpm validate-docs            # Full CLAUDE.md drift check
 ```
 
 ### Enforcement
 ```bash
-node scripts/check-secrets.js        # Scan staged files for secrets
-node scripts/check-file-sizes.js     # Check staged files against 300-line limit
-node scripts/generate-docs.js        # Regenerate auto sections in CLAUDE.md
-node scripts/generate-docs.js --check # Verify auto sections are current (CI mode)
-node scripts/validate-docs.js        # Pre-commit: warn if CLAUDE.md may need update
-node scripts/validate-docs.js --full # Full: compare CLAUDE.md against codebase
+node scripts/lib/check-secrets.js        # Scan staged files for secrets
+node scripts/lib/check-file-sizes.js     # Check staged files against 300-line limit
+node scripts/lib/generate-docs.js        # Regenerate auto sections in CLAUDE.md
+node scripts/lib/generate-docs.js --check # Verify auto sections are current (CI mode)
+node scripts/lib/validate-docs.js        # Pre-commit: warn if CLAUDE.md may need update
+node scripts/lib/validate-docs.js --full # Full: compare CLAUDE.md against codebase
 ```
 </important>
 
@@ -58,23 +65,23 @@ Data flow: `User action → [Entry point] → [Service layer] → [Data layer] �
 
 <!-- AUTO:tree -->
 src/
-├── index.js           # Application entry point
+├── index.ts           # Application entry point
 ├── routes/
-│   ├── api.js         # API route definitions
-│   └── auth.js        # Authentication routes
+│   ├── api.ts         # API route definitions
+│   └── auth.ts        # Authentication routes
 ├── services/
-│   ├── user.js        # User business logic
-│   └── billing.js     # Billing service
+│   ├── user.ts        # User business logic
+│   └── billing.ts     # Billing service
 └── utils/
-    ├── logger.js       # Structured logger
-    └── validators.js   # Input validation helpers
+    ├── logger.ts      # Structured logger
+    └── validators.ts  # Input validation helpers
 <!-- /AUTO:tree -->
 
 <!-- AUTO:modules -->
 | Module | Purpose | Key Exports |
 |--------|---------|-------------|
-| `index.js` | Application entry point | `start()`, `stop()` |
-| `services/user.js` | User business logic | `createUser()`, `findUser()`, `updateUser()` |
+| `index.ts` | Application entry point | `main()`, `start()`, `stop()` |
+| `services/user.ts` | User business logic | `createUser()`, `findUser()`, `updateUser()` |
 <!-- /AUTO:modules -->
 
 <important if="you are creating or modifying files">
@@ -102,32 +109,42 @@ STOP and refactor immediately if you see:
 
 ```bash
 # Monitor file sizes
-find src -name "*.js" -exec wc -l {} + | sort -n
+find src -name "*.ts" -exec wc -l {} + | sort -n
 ```
 </important>
 
 <important if="you are committing or pushing code">
 
-### Git hooks (managed by husky)
+### Git hooks
 
-**pre-commit** (fast, <2s): lint-staged → secret scan → file size check → doc generation → doc drift warning
+**pre-commit** (fast, <2s): oxlint → oxfmt check → secret scan → file size check → doc generation → doc drift warning
 
-**pre-push** (thorough): `npm run test:all` (unit + integration, SHA-cached) → `npm audit` (warn-only)
+**pre-push** (thorough): `pnpm test` (Vitest, SHA-cached) → `pnpm audit` (warn-only)
 
 Test caching: `.test-passed` stores SHA of last successful test run. If HEAD matches, tests are skipped.
 </important>
 
 <important if="you are adding logging or output">
 
-Use centralized logger module, not `console.log`. Route logs to stderr if stdout is used for program output. See `src/utils/logger.js`.
+Use centralized logger module, not `console.log`. Route logs to stderr if stdout is used for program output. See `src/utils/logger.ts`.
 </important>
 
-<important if="you are writing or modifying code">
+<important if="you are writing or modifying TypeScript code">
 
-### Language standards
-- Use modern language features and idioms
-- Enforce consistent style via linter configuration (see `.eslintrc.js`)
-- Use doc comments for all public APIs
+### TypeScript standards
+- `strict: true` is enabled in tsconfig
+- Use type annotations for function returns
+- Prefer `interface` for object shapes, `type` for unions
+- Use JSDoc comments (`/** */`) for public APIs
+- Run `pnpm typecheck` before committing
+
+```bash
+# Type check without emitting
+pnpm typecheck
+
+# Type check specific file
+npx tsc --noEmit src/some-file.ts
+```
 </important>
 
 <important if="you encounter unexpected errors or silent failures">
@@ -151,4 +168,4 @@ Use centralized logger module, not `console.log`. Route logs to stderr if stdout
 
 ---
 
-Auto-generated sections (`<!-- AUTO:name -->`) are maintained by `scripts/generate-docs.js`. Do NOT edit by hand.
+Auto-generated sections (`<!-- AUTO:name -->`) are maintained by `scripts/lib/generate-docs.js`. Do NOT edit by hand.

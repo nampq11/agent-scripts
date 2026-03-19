@@ -21,7 +21,7 @@ const CONFIG = {
   trackedDirs: ['src/', 'bin/', 'scripts/'],
   mappings: [
     { section: 'Directory Structure', dirs: ['src/', 'bin/', 'scripts/'] },
-    { section: 'Key Modules', dir: 'src/', pattern: /\.js$/ },
+    { section: 'Key Modules', dir: 'src/', pattern: /\.(js|ts)$/ },
   ],
 };
 

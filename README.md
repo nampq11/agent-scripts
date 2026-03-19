@@ -1,4 +1,4 @@
-# slopfiles
+# agent-scripts
 
 questionably useful claude code plugins
 
@@ -7,7 +7,7 @@ questionably useful claude code plugins
 Add the marketplace:
 
 ```bash
-claude plugin marketplace add dexhorthy/slopfiles
+claude plugin marketplace add nampq11/agent-scripts
 ```
 
 Install a plugin:

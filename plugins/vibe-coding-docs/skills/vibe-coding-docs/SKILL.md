@@ -1,6 +1,6 @@
 ---
 name: vibe-coding-docs
-description: Viết, tổ chức và refactor documentation cho dự án vibe coding sao cho cả người và AI agent (Cursor, Claude Code, v.v.) đều đọc và làm việc hiệu quả. Dùng skill này BẤT CỨ KHI NÀO người dùng muốn: tạo docs cho project mới, refactor docs cũ, hỏi "AI không hiểu codebase của mình", hỏi về cách viết context cho AI, hoặc nhắc đến "documentation", "context cho AI", "vibe coding docs", "structured docs", "docs cho Cursor/Claude Code". Trigger ngay cả khi người dùng chỉ nói "giúp tao viết docs", "AI cứ trả lời sai", hoặc "cần document codebase".
+description: "Viết, tổ chức và refactor documentation cho dự án vibe coding sao cho cả người và AI agent (Cursor, Claude Code, v.v.) đều đọc và làm việc hiệu quả. Dùng skill này BẤT CỨ KHI NÀO người dùng muốn: tạo docs cho project mới, refactor docs cũ, hỏi \"AI không hiểu codebase của mình\", hỏi về cách viết context cho AI, hoặc nhắc đến \"documentation\", \"context cho AI\", \"vibe coding docs\", \"structured docs\", \"docs cho Cursor/Claude Code\". Trigger ngay cả khi người dùng chỉ nói \"giúp tao viết docs\", \"AI cứ trả lời sai\", hoặc \"cần document codebase\"."
 ---
 
 # Vibe Coding Docs Skill

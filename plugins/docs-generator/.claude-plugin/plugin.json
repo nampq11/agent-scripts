@@ -1,7 +1,7 @@
 {
   "name": "docs-generator",
   "description": "Write, organize, and refactor documentation optimized for both humans and AI agents (Cursor, Claude Code, etc.)",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "nampham1106"
   }

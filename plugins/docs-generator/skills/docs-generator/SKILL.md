@@ -1,174 +1,254 @@
 ---
 name: docs-generator
-description: "Write, organize, and refactor documentation optimized for both humans and AI agents (Cursor, Claude Code, etc.). Use this skill WHENEVER the user wants to: create docs for a new project, refactor old docs, asks \"AI doesn't understand my codebase\", asks about writing context for AI, or mentions \"documentation\", \"context for AI\", \"structured docs\", \"docs for Cursor/Claude Code\". Trigger even when the user just says \"help me write docs\", \"AI keeps answering wrong\", or \"need to document codebase\"."
+description: "Write, organize, and refactor documentation optimized for both humans and AI agents (Cursor, Claude Code, etc.). Use this skill WHENEVER the user wants to: create docs for a new project, refactor old docs, asks \"AI doesn't understand my codebase\", asks about writing context for AI, or mentions \"documentation\", \"context for AI\", \"structured docs\", \"docs for Cursor/Claude Code\", \"restructure README\", \"organize docs\", \"improve doc structure\". Trigger even when the user just says \"help me write docs\", \"AI keeps answering wrong\", \"need to document codebase\"."
 ---
 
-# Docs Generator Skill
+# Documentation Generator
 
-This skill helps create structured documentation for vibe coding projects, optimized for both humans and AI agents (Cursor, Claude Code, Windsurf, etc.) to navigate and extract accurate information.
+Create and restructure documentation optimized for both humans and AI agents.
 
-## Core Philosophy
+## CRITICAL: Git Workflow First (MANDATORY)
 
-Good AI documentation isn't about writing more — it's about writing with **predictable structure**. LLMs process tokens through attention weights: headings, tables, and code blocks receive higher attention than regular prose. Information buried in long paragraphs is easily missed or incorrectly extracted by AI.
+**You MUST complete git workflow BEFORE creating any documentation files.**
+
+### Step 0: Create Feature Branch (MANDATORY - Do First)
+
+1. **Check current branch:**
+   ```bash
+   git branch --show-current
+   ```
+   If already on a feature branch for this task, skip to step 2.
+
+2. **Check repo's branch naming convention:**
+   ```bash
+   git branch -r | head -20
+   ```
+   Look for patterns like `feat/`, `feature/`, `docs/`, etc.
+
+3. **Create and switch to new branch:**
+   ```bash
+   git checkout -b feat/docs-generator
+   ```
+   (Replace `feat/` with the repo's convention if different)
+
+### Step 0.5: Sync with Remote (MANDATORY - Do Second)
+
+**Before creating/updating/deleting ANY files:**
+
+```bash
+branch="$(git rev-parse --abbrev-ref HEAD)"
+git fetch origin
+git pull --rebase origin "$branch"
+```
+
+If working tree is not clean, stash first:
+
+```bash
+git stash push -u -m "pre-sync"
+branch="$(git rev-parse --abbrev-ref HEAD)"
+git fetch origin && git pull --rebase origin "$branch"
+git stash pop
+```
+
+**STOP if:**
+- `origin` is missing
+- Pull is unavailable
+- Rebase or stash conflicts occur
+
+→ **Ask the user before continuing.**
+
+---
+
+## Why This Matters
+
+Good documentation isn't about writing more—it's about writing with **predictable structure**. LLMs process tokens through attention weights: headings, tables, and code blocks receive higher attention than regular prose.
 
 **Domain partitioning formula:**
 ```
 Domain = Responsibility × Change-frequency × Dependency-level
 ```
 
-- **Responsibility**: Each doc does ONE thing. Test: describe the doc in one sentence without the word "and".
-- **Change-frequency**: Things that change together → go in the same doc.
-- **Dependency-level**: Number indicates dependency level. Lower number = foundation, higher number = surface.
-
 ---
 
-## Workflow
+## Main Workflow
 
-### Step 1: Inventory & Cluster
+### Step 1: Analyze Project
 
-First, ask the user (or analyze the codebase if available) to get:
-- List of all components/modules in the system
-- Tech stack being used
-- Project scale (number of files, number of modules)
+| Attribute | What to Look For |
+|-----------|------------------|
+| **Project type** | Library, API, web app, CLI, microservices |
+| **Architecture** | Monorepo, multi-package, single module |
+| **User personas** | End users, developers, operators |
+| **Existing docs** | README files, docs/ folder, inline comments |
+| **Gaps** | What exists vs. what's missing |
 
-Then cluster by responsibility. Use 4 questions to classify:
+**Output status report after analysis** (see Status Report format below).
+
+### Step 2: Cluster by Responsibility
+
+Use 4 questions to classify:
 
 | Question | Purpose |
 |----------|---------|
 | **Change Q**: "If you change X, do you have to change Y?" | X and Y belong in same doc if yes |
-| **Break Q**: "If X breaks, what else breaks?" | Determine order (more breakage → lower number) |
+| **Break Q**: "If X breaks, what else breaks?" | Determine order |
 | **Explain Q**: "Can you explain this concept in 3 minutes?" | If no → split it |
 | **Find Q**: "Where would someone look for this info?" | Doc must match mental model |
 
-### Step 2: Create file structure
+**Output status report after clustering.**
 
-Name files following pattern: `NN-domain-name.md`
+### Step 3: Create File Structure
 
-Example typical structure:
+**For AI-optimized projects:**
 ```
 docs/
-├── 00-architecture-overview.md   # Foundation, everything depends on this
+├── 00-architecture-overview.md   # Foundation
 ├── 01-[core-flow].md
 ├── 02-[main-worker].md
 ├── 03-[interface-layer].md
 ├── 04-[external-services].md
 ├── 05-[data-layer].md
-├── 06-[storage].md
-├── 07-[frontend].md
-├── 08-[deployment].md
-└── SITE.md                        # Index, lists all docs
+└── SITE.md                        # Index
 ```
 
-The numbering reflects dependency: 00 is foundation (depended on by most things), higher numbers are surface.
+**For general projects:**
+```
+docs/
+├── architecture.md
+├── api-reference.md
+├── database.md
+├── deployment.md
+├── development.md
+└── user-guide.md
+```
 
-### Step 3: Write each doc following skeleton
+**IMPORTANT: Check if docs/ folder exists before using it in links.**
+- If `docs/` exists: use `docs/SITE.md` in README links
+- If no `docs/` folder: use `SITE.md` directly (flat structure)
 
-Each doc MUST follow this skeleton (see `references/doc-skeleton.md`):
+### Step 4: Write Each Doc
+
+**For AI-optimized projects:** Follow skeleton at `references/doc-skeleton.md`
+
+**For general projects:** Use simplified structure:
 
 ```markdown
----
-title: '{auto-derived from NN-domain-name}'
-summary: '{auto-extracted from overview section}'
-read_when:
-  - {smart defaults based on doc type}
----
+# [Title]
 
-# NN-domain-name
+[2-3 sentence overview]
 
-{2-3 sentence overview: what this is, why it exists}
+## [Section Name]
+[Use tables for config/data]
 
-## System Diagram
-{Mermaid diagram}
-
-## 1. First Section
-{Table for config/data, avoid prose}
-
-## 2. Second Section
-{...}
+| Config | Value |
+|--------|-------|
+| key    | value |
 
 ## File Reference
 | File | Purpose |
 |------|---------|
 
-## Cross-References
+## Related Docs
 | Doc | Relation |
 |-----|----------|
 ```
 
-**Important rules:**
-- Config values, parameters, routes → **always use tables**, don't bury in prose
-- Keep each doc at **850–1550 tokens** (includes frontmatter) to fit in one RAG chunk
-- Always include **Cross-References** so AI can navigate between docs
+**Key rules (ALL projects):**
+- Config/parameters/routes → **always tables**
+- Keep docs at **850–1550 tokens** when AI optimization matters
+- Always include **cross-references**
 
-### Step 3.5: Add frontmatter to each doc
+**Output status report after docs created.**
 
-Every doc must begin with YAML frontmatter:
+### Step 5: Create SITE.md
 
-```yaml
+For AI-optimized: use `references/site-template.md`
+
+For general: simple index with quick reference table and doc descriptions.
+
+### Step 6: Validate & Present
+
+1. **Verify internal links** - Check all paths exist before adding them
+2. **Check code examples** - Ensure syntax is valid
+3. **Confirm no orphaned docs** - Everything linked from somewhere
+4. **Present summary to user** - Do NOT commit unless explicitly asked
+
+**Output final status report.**
+
 ---
-title: 'Derived from filename (e.g., 02-ingest-worker.md → Ingest Worker)'
-summary: 'Extracted from overview section (first 2-3 sentences)'
-read_when:
-  - scenario from smart defaults
-  - additional scenarios if needed
----
+
+## Status Report Format
+
+After each major step, output:
+
+```
+◆ [Step Name] ([step N of M] — [context])
+··································································
+  [Check 1]:          √ pass
+  [Check 2]:          √ pass (note if relevant)
+  [Check 3]:          × fail — [reason]
+  [Check 4]:          √ pass
+  [Criteria]:         √ N/M met
+  ____________________________
+  Result:             PASS | FAIL | PARTIAL
 ```
 
-**Frontmatter field generation:**
+### Phase-specific checks
 
-| Field | Source |
-|-------|--------|
-| `title` | Auto-derived from filename: strip number prefix, convert kebab-case to Title Case |
-| `summary` | Auto-extracted from the overview section (first 2-3 sentences) |
-| `read_when` | Smart defaults based on doc position, customize when needed |
+**Git Workflow:**
+- `Branch created`
+- `Repo synced`
 
-**`read_when` smart defaults:**
+**Project Analysis:**
+- `Project analyzed`
+- `Gaps identified`
 
-| Doc number/pattern | Default scenarios |
-|--------------------|-------------------|
-| `00-*` (architecture) | onboarding to the codebase, understanding system design |
-| `01-03-*` (core flows) | implementing features, modifying core behavior |
-| `04-06-*` (services/data) | integrating services, debugging data issues |
-| `07-*` (frontend) | building UI, modifying components |
-| `08-*` (deployment) | deploying, configuring environments |
-| Contains "test" | writing tests, debugging test failures |
-| Contains "api" | consuming APIs, adding endpoints |
+**Clustering:**
+- `Domain partitioning applied`
+- `Dependency ordering determined`
 
-Customize `read_when` for special cases. Example: if `02-ingest-worker.md` is also used for webhook debugging, add `- debugging webhook failures`.
+**Documentation Creation:**
+- `Docs created`
+- `Frontmatter complete` (AI projects)
+- `Diagrams included` (AI projects)
+- `Cross-references added`
 
-### Step 4: Create SITE.md (index)
-
-SITE.md is the map so AI knows where to find what. See template at `references/site-template.md`.
-
-### Step 5: Validate
-
-Checklist before finishing:
-- [ ] Each doc has YAML frontmatter with `title`, `summary`, `read_when`?
-- [ ] Each doc has 2-3 sentence overview?
-- [ ] Each doc has Mermaid diagram?
-- [ ] Config/data in tables, not in prose?
-- [ ] All have File Reference?
-- [ ] All have Cross-References?
-- [ ] SITE.md has been updated?
-- [ ] Each doc can be described in one sentence without "and"?
+**Validation:**
+- `Links verified` (check paths exist!)
+- `Code examples valid`
+- `No orphaned docs`
 
 ---
 
-## Anti-patterns to avoid
+## Error Handling
+
+| Situation | Solution |
+|-----------|----------|
+| No existing docs | Generate from code analysis |
+| Conflicting docs | Flag to user, prefer code-derived info |
+| Git sync fails | STOP and ask user |
+| docs/ folder missing | Use flat structure, adjust links |
+
+---
+
+## Reference Files
+
+| Reference | When to Read |
+|-----------|--------------|
+| `references/doc-skeleton.md` | Need full AI-optimized doc template |
+| `references/site-template.md` | Need to create SITE.md |
+| `references/example-doc.md` | Need complete example |
+| `references/why-structure.md` | Need to explain tables vs prose |
+
+---
+
+## Anti-patterns to Avoid
 
 | Anti-pattern | Problem | Solution |
 |-------------|---------|----------|
-| Organize by file type (models.md, controllers.md) | Feature spans multiple file types, must jump around | Organize by domain/responsibility |
-| Alphabetical sorting | No learning path | Sort by dependency level |
-| One mega-doc (README.md contains everything) | Can't chunk, can't find anything | Split into multiple small docs |
-| Too much prose | AI can't extract, wastes tokens | Use tables for structured data |
-| No Cross-References | Each doc is an island | Always link to related docs |
-
----
-
-## When to read reference files
-
-- Need full template for a doc → read `references/doc-skeleton.md`
-- Need to create SITE.md index → read `references/site-template.md`
-- Need complete doc example → read `references/example-doc.md`
-- Need to understand why tables are better than prose (to explain to user) → read `references/why-structure.md`
+| Organize by file type | Feature spans types | Organize by responsibility |
+| Alphabetical sorting | No learning path | Sort by dependency |
+| One mega-doc | Can't chunk | Split into focused docs |
+| Too much prose | AI can't extract | Use tables for data |
+| No cross-references | Each doc is island | Always link related docs |
+| Assume docs/ folder exists | Links break | Check structure first |

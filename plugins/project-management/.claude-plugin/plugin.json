@@ -6,10 +6,6 @@
     "name": "nampham1106",
     "email": "nampham11062002@gmail.com"
   },
-  "skills": [
-    "tasks-generator",
-    "prd-generator"
-  ],
   "category": "productivity",
   "keywords": ["project-management", "prd", "tasks", "sprint", "agile", "planning", "dependency-analysis"]
 }
